@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+import net from 'net';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,16 +10,39 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let cachedTransporter = null;
+let cachedHostKey = '';
 
-const getSmtpTransporter = () => {
-  if (cachedTransporter) return cachedTransporter;
+// AAAA lookups for the SMTP host hang on this network, and Nodemailer waits
+// for that lookup before it opens a socket. Resolve IPv4 ourselves and connect
+// to the address, keeping the hostname for TLS.
+const lookupIpv4 = (hostname) => new Promise((resolve) => {
+  if (!hostname || net.isIP(hostname)) {
+    resolve(hostname || '');
+    return;
+  }
+  const timer = setTimeout(() => resolve(''), 4000);
+  dns.resolve4(hostname, (err, addresses) => {
+    clearTimeout(timer);
+    if (err || !addresses || !addresses[0]) resolve('');
+    else resolve(addresses[0]);
+  });
+});
+
+const getSmtpTransporter = async () => {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     return null;
   }
 
+  const hostname = process.env.SMTP_HOST;
+  const ipv4 = await lookupIpv4(hostname);
+  const host = ipv4 || hostname;
+  const cacheKey = `${host}|${process.env.SMTP_PORT}|${process.env.SMTP_USER}`;
+  if (cachedTransporter && cachedHostKey === cacheKey) return cachedTransporter;
+
   try {
+    cachedHostKey = cacheKey;
     cachedTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
+      host,
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
       requireTLS: process.env.SMTP_SECURE !== 'true',
@@ -25,14 +50,19 @@ const getSmtpTransporter = () => {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 30000,
+      tls: {
+        servername: hostname,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      dnsTimeout: 4000,
     });
     return cachedTransporter;
   } catch (err) {
     console.error('[MAILER] Failed to create SMTP transporter:', err);
     cachedTransporter = null;
+    cachedHostKey = '';
     return null;
   }
 };
@@ -44,7 +74,7 @@ const splitRecipients = (to) => {
 };
 
 const sendMailWithSmtp = async (mailOptions) => {
-  const transporter = getSmtpTransporter();
+  const transporter = await getSmtpTransporter();
   const recipients = splitRecipients(mailOptions.to);
   if (!transporter) {
     console.log('[MAILER] No SMTP credentials configured. Email logged to file.');
@@ -64,7 +94,7 @@ const sendMailWithSmtp = async (mailOptions) => {
       console.error(`[MAILER] SMTP send failed to ${to}:`, err.message || err);
       cachedTransporter = null;
       try {
-        const retryTransporter = getSmtpTransporter();
+        const retryTransporter = await getSmtpTransporter();
         if (!retryTransporter) throw err;
         await retryTransporter.sendMail({ ...mailOptions, to });
         console.log(`[MAILER] Email retry succeeded for ${to} (${mailOptions.subject})`);
