@@ -23,8 +23,13 @@ const lookupIpv4 = (hostname) => new Promise((resolve) => {
   const timer = setTimeout(() => resolve(''), 4000);
   dns.resolve4(hostname, (err, addresses) => {
     clearTimeout(timer);
-    if (err || !addresses || !addresses[0]) resolve('');
-    else resolve(addresses[0]);
+    if (!err && addresses && addresses[0]) {
+      resolve(addresses[0]);
+      return;
+    }
+    dns.lookup(hostname, { family: 4 }, (lookupErr, address) => {
+      resolve(!lookupErr && address ? address : '');
+    });
   });
 });
 
@@ -73,6 +78,43 @@ const splitRecipients = (to) => {
   return [...new Set(list.map((value) => String(value).trim()).filter(Boolean))];
 };
 
+const isConnectionError = (err) =>
+  /ETIMEDOUT|ECONNECTION|ESOCKET|ECONNREFUSED|ENETUNREACH|ETLS|Greeting never received|Connection timeout|timeout/i
+    .test(`${err && err.code} ${err && err.message}`);
+
+const sendWithPortFallback = async (transporter, mailOptions, to) => {
+  try {
+    await transporter.sendMail({ ...mailOptions, to });
+    return;
+  } catch (err) {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    if (port === 465 && isConnectionError(err)) {
+      console.error(`[MAILER] Port 465 failed for ${to} (${err.message || err}). Retrying on 587.`);
+      cachedTransporter = null;
+      cachedHostKey = '';
+      const hostname = process.env.SMTP_HOST;
+      const ipv4 = await lookupIpv4(hostname);
+      const fallback = nodemailer.createTransport({
+        host: ipv4 || hostname,
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        tls: { servername: hostname },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+      });
+      await fallback.sendMail({ ...mailOptions, to });
+      return;
+    }
+    throw err;
+  }
+};
+
 const sendMailWithSmtp = async (mailOptions) => {
   const transporter = await getSmtpTransporter();
   const recipients = splitRecipients(mailOptions.to);
@@ -88,15 +130,16 @@ const sendMailWithSmtp = async (mailOptions) => {
   // Send one recipient at a time so one bad seed address cannot block Gmail inboxes.
   for (const to of recipients) {
     try {
-      await transporter.sendMail({ ...mailOptions, to });
+      await sendWithPortFallback(transporter, mailOptions, to);
       console.log(`[MAILER] Email successfully sent to ${to} (${mailOptions.subject})`);
     } catch (err) {
       console.error(`[MAILER] SMTP send failed to ${to}:`, err.message || err);
       cachedTransporter = null;
+      cachedHostKey = '';
       try {
         const retryTransporter = await getSmtpTransporter();
         if (!retryTransporter) throw err;
-        await retryTransporter.sendMail({ ...mailOptions, to });
+        await sendWithPortFallback(retryTransporter, mailOptions, to);
         console.log(`[MAILER] Email retry succeeded for ${to} (${mailOptions.subject})`);
       } catch (retryErr) {
         console.error(`[MAILER] SMTP retry failed to ${to}:`, retryErr.message || retryErr);

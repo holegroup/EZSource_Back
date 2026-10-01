@@ -2265,3 +2265,16 @@ The PrintFlow Team
 ********************************************************************************
 
 =========================================
+
+[LOGIN ALERT] Sent to akshay2014.ar@gmail.com
+
+Hello Johxvn Doe,
+
+We noticed a successful login to your PrintFlow account just now.
+If this was you, no further action is needed.
+
+If you did not authorize this login, please contact support immediately.
+
+Best regards,
+The PrintFlow Team
+
