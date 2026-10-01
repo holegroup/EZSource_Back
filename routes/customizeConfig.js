@@ -5,6 +5,7 @@ import Notification from '../models/Notification.js';
 import { sendApprovalEmail, sendApprovalConfirmationEmail } from '../utils/mailer.js';
 import { protect, restrictTo } from '../middleware/auth.js';
 import { getStaffEmails } from '../utils/staffEmails.js';
+import { formatUsPhone, withFormattedPhone } from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -37,6 +38,9 @@ router.post(
   async (req, res) => {
     try {
       // Use findOneAndUpdate with empty filter and upsert option to keep at most one config in the collection
+      if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+        req.body.phone = formatUsPhone(req.body.phone);
+      }
       const config = await CustomizeConfig.findOneAndUpdate(
         {},
         req.body,
@@ -64,15 +68,16 @@ router.post('/send-approval', protect, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Design details are required.' });
     }
 
+    const formattedDetails = withFormattedPhone(designDetails);
     const approval = await CardApproval.create({
       user: req.user._id,
       userEmail: req.user.email,
-      designDetails,
+      designDetails: formattedDetails,
       designType: designType || 'business_card'
     });
 
     const adminEmails = await getStaffEmails(['super_user']);
-    const approvalUrl = await sendApprovalEmail(req.user.email, approval._id, designDetails, adminEmails);
+    const approvalUrl = await sendApprovalEmail(req.user.email, approval._id, formattedDetails, adminEmails, req);
 
     // Fire-and-forget notification creation so the user response is not delayed.
     Notification.create({
@@ -181,15 +186,16 @@ router.post('/send-approval-to-user', protect, restrictTo('super_user', 'it_admi
       return res.status(400).json({ success: false, error: 'userId, userEmail and designDetails are required.' });
     }
 
+    const formattedDetails = withFormattedPhone(designDetails);
     const approval = await CardApproval.create({
       user: userId,
       userEmail,
-      designDetails,
+      designDetails: formattedDetails,
       designType: designType || 'business_card'
     });
 
     const adminEmails = await getStaffEmails(['super_user']);
-    const approvalUrl = await sendApprovalEmail(userEmail, approval._id, designDetails, adminEmails);
+    const approvalUrl = await sendApprovalEmail(userEmail, approval._id, formattedDetails, adminEmails, req);
 
     // Notify super users in background
     Notification.create({

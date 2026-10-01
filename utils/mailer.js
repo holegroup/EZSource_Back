@@ -75,11 +75,66 @@ const sendMailWithSmtp = async (mailOptions) => {
   }
 };
 
-export const sendApprovalEmail = async (toEmail, approvalId, designDetails, adminEmails = []) => {
-  const defaultFrontendUrl = process.env.NODE_ENV === 'production'
-    ? 'https://visiting-frontend.onrender.com'
-    : 'http://localhost:5173';
-  const frontendUrl = process.env.FRONTEND_URL || defaultFrontendUrl;
+const PRODUCTION_FRONTEND_URL = 'https://visiting-frontend.onrender.com';
+const LOCAL_FRONTEND_URL = 'http://localhost:5173';
+
+const isLocalHostname = (hostname) =>
+  hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+
+const toOrigin = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    return url.origin;
+  } catch {
+    return '';
+  }
+};
+
+const isAllowedFrontendOrigin = (origin) => {
+  try {
+    const url = new URL(origin);
+    if (isLocalHostname(url.hostname)) return true;
+    if (url.protocol !== 'https:') return false;
+    if (url.origin === PRODUCTION_FRONTEND_URL) return true;
+
+    const configured = toOrigin(process.env.FRONTEND_URL);
+    if (!configured) return false;
+    const configuredHost = new URL(configured).hostname;
+    return url.origin === configured && !isLocalHostname(configuredHost);
+  } catch {
+    return false;
+  }
+};
+
+// Local requests keep a localhost approval link. Production requests use the live site,
+// even when FRONTEND_URL is still set to localhost.
+export const resolveFrontendBaseUrl = (req) => {
+  const candidates = [
+    req?.body?.clientOrigin,
+    req?.headers?.origin,
+    req?.headers?.referer,
+  ];
+
+  for (const candidate of candidates) {
+    const origin = toOrigin(candidate);
+    if (origin && isAllowedFrontendOrigin(origin)) return origin;
+  }
+
+  const configured = toOrigin(process.env.FRONTEND_URL);
+  const configuredIsLocal = !configured || isLocalHostname(new URL(configured).hostname);
+  const runningInProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+  if (runningInProduction) {
+    return configuredIsLocal ? PRODUCTION_FRONTEND_URL : configured;
+  }
+
+  return configured || LOCAL_FRONTEND_URL;
+};
+
+export const sendApprovalEmail = async (toEmail, approvalId, designDetails, adminEmails = [], req) => {
+  const frontendUrl = resolveFrontendBaseUrl(req);
   const approvalUrl = `${frontendUrl}/approve-card-design/${approvalId}`;
   const emailTextWithButton = `
 ********************************************************************************

@@ -1,6 +1,7 @@
 import express from 'express';
 import UserDesignDraft from '../models/UserDesignDraft.js';
 import { protect } from '../middleware/auth.js';
+import { withFormattedPhone } from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -38,9 +39,10 @@ router.post('/:type', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Design details are required.' });
     }
 
+    const formattedDetails = withFormattedPhone(designDetails);
     const draft = await UserDesignDraft.findOneAndUpdate(
       { user: req.user._id, designType: type },
-      { designDetails },
+      { designDetails: formattedDetails },
       { new: true, upsert: true }
     );
 

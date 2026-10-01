@@ -2,6 +2,7 @@ import express from 'express';
 import User from '../models/User.js';
 import { protect, restrictTo } from '../middleware/auth.js';
 import { sendAccountApprovedEmail } from '../utils/mailer.js';
+import { formatUsPhone } from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -47,7 +48,7 @@ router.put('/:id', async (req, res) => {
 
     const oldStatus = user.status;
     if (fullName) user.fullName = fullName;
-    if (phone !== undefined) user.phone = phone;
+    if (phone !== undefined) user.phone = formatUsPhone(phone);
     if (role) user.role = role;
     if (status) user.status = status;
 

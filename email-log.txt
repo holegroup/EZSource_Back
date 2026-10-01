@@ -2200,3 +2200,68 @@ If you have any questions, please contact our support team.
 Best regards,
 The PrintFlow Team
 
+
+[LOGIN ALERT] Sent to akkirr001@gmail.com
+
+Hello Super User (Admin),
+
+We noticed a successful login to your PrintFlow account just now.
+If this was you, no further action is needed.
+
+If you did not authorize this login, please contact support immediately.
+
+Best regards,
+The PrintFlow Team
+
+
+=========================================
+Timestamp: 2026-10-01T06:45:36.444Z
+To: akkirr001@gmail.com
+Subject: Action Required: Approve Your PrintFlow Card Design
+Approval URL: http://localhost:5173/approve-card-design/6abe01909450a2163dab99d7
+-----------------------------------------
+
+********************************************************************************
+👉 ACTION REQUIRED: APPROVE YOUR PRINTFLOW CARD DESIGN 👈
+********************************************************************************
+
+Hello,
+
+You have requested approval for your customized card design at PrintFlow.
+Please click the direct link below to view, verify, and approve your design:
+
+➡️ CLICK HERE TO APPROVE: http://localhost:5173/approve-card-design/6abe01909450a2163dab99d7
+
+(Note: Once approved, you will be prompted to enter your shipping address and complete payment details.)
+
+Thank you,
+The PrintFlow Team
+********************************************************************************
+
+=========================================
+
+=========================================
+Timestamp: 2026-10-01T07:18:45.332Z
+To: akkirr001@gmail.com
+Subject: Action Required: Approve Your PrintFlow Card Design
+Approval URL: http://localhost:5173/approve-card-design/6abe095561ae56899737a5d5
+-----------------------------------------
+
+********************************************************************************
+👉 ACTION REQUIRED: APPROVE YOUR PRINTFLOW CARD DESIGN 👈
+********************************************************************************
+
+Hello,
+
+You have requested approval for your customized card design at PrintFlow.
+Please click the direct link below to view, verify, and approve your design:
+
+➡️ CLICK HERE TO APPROVE: http://localhost:5173/approve-card-design/6abe095561ae56899737a5d5
+
+(Note: Once approved, you will be prompted to enter your shipping address and complete payment details.)
+
+Thank you,
+The PrintFlow Team
+********************************************************************************
+
+=========================================

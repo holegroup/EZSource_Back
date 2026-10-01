@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
 import { sendPendingApprovalEmail, sendWelcomeEmail, sendLoginEmail } from '../utils/mailer.js';
+import { formatUsPhone } from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.post('/register', async (req, res) => {
       email,
       passwordHash: password, // Named passwordHash because Mongoose model maps passwordHash
       fullName,
-      phone: phone || '',
+      phone: formatUsPhone(phone),
       role: role || 'user',
     });
 
@@ -191,7 +192,7 @@ router.put('/me', protect, async (req, res) => {
 
     const { fullName, phone, jobTitle, linkedin, instagram } = req.body;
     if (fullName !== undefined) user.fullName = fullName;
-    if (phone !== undefined) user.phone = phone;
+    if (phone !== undefined) user.phone = formatUsPhone(phone);
     if (jobTitle !== undefined) user.jobTitle = jobTitle;
     if (linkedin !== undefined) user.linkedin = linkedin;
     if (instagram !== undefined) user.instagram = instagram;

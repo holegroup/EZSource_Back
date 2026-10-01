@@ -8,6 +8,7 @@ import User from '../models/User.js';
 import { sendInvoiceEmail, sendOrderPlacedEmails, sendOrderStatusEmails } from '../utils/mailer.js';
 import { getStaffEmails } from '../utils/staffEmails.js';
 import { deductStock, resolveProduct } from '../utils/inventoryStock.js';
+import { withFormattedPhone } from '../utils/phone.js';
 
 const buildInvoiceDetails = (order) => {
   const createdAt = order.createdAt ? new Date(order.createdAt) : new Date();
@@ -169,7 +170,7 @@ router.post('/', protect, async (req, res) => {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         subtotal: item.subtotal,
-        customization: item.customization || {},
+        customization: withFormattedPhone(item.customization || {}),
         _resolvedProduct: product,
       });
     }

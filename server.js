@@ -28,7 +28,7 @@ const app = express();
 
 // Standard Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 // Enable gzip compression to reduce response sizes
 app.use(compression());
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import PickupLocation from '../models/PickupLocation.js';
 import { protect, restrictTo } from '../middleware/auth.js';
+import { formatUsPhone } from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ router.post('/', protect, restrictTo('super_user', 'it_administrator'), async (r
     const location = await PickupLocation.create({
       name,
       address,
-      phone: phone || ''
+      phone: formatUsPhone(phone)
     });
 
     res.status(201).json({
